@@ -1,7 +1,5 @@
 package com.mahmoud.ledger.infrastructure.persistence;
 
-import com.mahmoud.ledger.domain.model.Money;
-import com.mahmoud.ledger.domain.model.Posting;
 import com.mahmoud.ledger.domain.model.Transaction;
 import jakarta.persistence.*;
 import lombok.Getter;
