@@ -43,9 +43,9 @@ class LedgerApplicationServiceTest {
     }
 
     @Test
-    void testCreateAccount_Success() {
+    void createAccount_ShouldPersistAccount() {
         // Given
-        CreateAccountCommand command = new CreateAccountCommand("Test Account", AccountType.ASSET, "USD");
+        CreateAccountCommand command = new CreateAccountCommand("Test Account", "USD");
 
         // When
         UUID accountId = service.createAccount(command);
@@ -59,9 +59,12 @@ class LedgerApplicationServiceTest {
     void testCreateAccount_DuplicateName() {
         // Given
         UUID accountId = UUID.randomUUID();
-        CreateAccountCommand command = new CreateAccountCommand("Test Account", AccountType.ASSET, "USD");
+        CreateAccountCommand command = new CreateAccountCommand("Alice", "USD");
+        Account account = Account.create(accountId, "Alice", AccountType.ASSET, "USD");
+        when(accountPort.load(accountId)).thenReturn(Optional.of(account));
 
-        Account existingAccount = Account.create(accountId, "Test Account", AccountType.ASSET, "USD");
+        // When
+        UUID result = service.createAccount(command);
         // The rest of the test logic for duplicate name would go here, e.g., mocking
         // accountPort.findByName and asserting an exception.
     }

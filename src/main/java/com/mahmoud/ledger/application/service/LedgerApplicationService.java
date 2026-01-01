@@ -33,7 +33,8 @@ public class LedgerApplicationService
     @Transactional
     public UUID createAccount(CreateAccountCommand command) {
         UUID accountId = UUID.randomUUID();
-        Account account = Account.create(accountId, command.name(), command.type(), command.currency());
+        Account account = Account.create(accountId, command.name(), com.mahmoud.ledger.domain.model.AccountType.ASSET,
+                command.currency());
         accountPort.save(account);
         return accountId;
     }

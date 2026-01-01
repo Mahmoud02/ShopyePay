@@ -27,12 +27,11 @@ public class LedgerIntegrationTest {
 
         @Test
         void given_NewAccount_When_DepositFunds_Then_BalanceIsUpdated() {
-                // 1. Create a "Genesis" account (Equity)
-                CreateAccountCommand genesisCmd = new CreateAccountCommand("Genesis", AccountType.EQUITY, "USD");
-                UUID genesisId = createAccountHelper(genesisCmd);
+                // 1. Genesis Account already exists (Bootstrapped)
+                UUID genesisId = com.mahmoud.ledger.domain.model.SystemAccounts.GENESIS_ACCOUNT_ID;
 
                 // 2. Create the User's account (Asset)
-                CreateAccountCommand userCmd = new CreateAccountCommand("Alice", AccountType.ASSET, "USD");
+                CreateAccountCommand userCmd = new CreateAccountCommand("Alice", "USD");
                 UUID aliceId = createAccountHelper(userCmd);
 
                 // 3. Deposit (Genesis -> Alice)
@@ -55,11 +54,12 @@ public class LedgerIntegrationTest {
 
         @Test
         void given_FundedAccounts_When_TransferFunds_Then_BalancesAreUpdated() {
-                // 1. Create Accounts
-                UUID genesisId = createAccountHelper(
-                                new CreateAccountCommand("Genesis", AccountType.EQUITY, "USD"));
-                UUID aliceId = createAccountHelper(new CreateAccountCommand("Alice", AccountType.ASSET, "USD"));
-                UUID bobId = createAccountHelper(new CreateAccountCommand("Bob", AccountType.ASSET, "USD"));
+                // 1. Genesis exists
+                UUID genesisId = com.mahmoud.ledger.domain.model.SystemAccounts.GENESIS_ACCOUNT_ID;
+
+                // Create User Accounts
+                UUID aliceId = createAccountHelper(new CreateAccountCommand("Alice", "USD"));
+                UUID bobId = createAccountHelper(new CreateAccountCommand("Bob", "USD"));
 
                 // 2. Fund Alice (Genesis -> Alice)
                 PostTransactionCommand fundAlice = new PostTransactionCommand(
@@ -93,13 +93,13 @@ public class LedgerIntegrationTest {
 
         @Test
         void given_TransferWithFee_When_Executed_Then_RevenueAccountIsCredited() {
-                // 1. Create Accounts
-                // "Revenue" account here acts as the Company Wallet (Asset)
-                UUID revenueId = createAccountHelper(
-                                new CreateAccountCommand("Company Wallet", AccountType.ASSET, "USD"));
-                UUID genesisId = createAccountHelper(new CreateAccountCommand("Genesis", AccountType.EQUITY, "USD"));
-                UUID aliceId = createAccountHelper(new CreateAccountCommand("Alice", AccountType.ASSET, "USD"));
-                UUID bobId = createAccountHelper(new CreateAccountCommand("Bob", AccountType.ASSET, "USD"));
+                // 1. System Accounts exist
+                UUID revenueId = com.mahmoud.ledger.domain.model.SystemAccounts.REVENUE_ACCOUNT_ID;
+                UUID genesisId = com.mahmoud.ledger.domain.model.SystemAccounts.GENESIS_ACCOUNT_ID;
+
+                // Create User Accounts
+                UUID aliceId = createAccountHelper(new CreateAccountCommand("Alice", "USD"));
+                UUID bobId = createAccountHelper(new CreateAccountCommand("Bob", "USD"));
 
                 // 2. Fund Alice with 100 USD (Genesis -> Alice)
                 PostTransactionCommand fundAlice = new PostTransactionCommand(
