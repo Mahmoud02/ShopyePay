@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -80,18 +81,43 @@ public class LedgerApplicationService
                 command.fromAccountId(),
                 command.amount(),
                 command.currency(),
-                Posting.Type.CREDIT);
+                Posting.Type.CREDIT); // Decreases Asset, Increases Liability (Source pays)
 
-        PostingCommand debitDest = new PostingCommand(
-                command.toAccountId(),
-                command.amount(),
-                command.currency(),
-                Posting.Type.DEBIT);
+        java.util.List<PostingCommand> postings;
+
+        if (command.revenueAccountId() != null) {
+            // Fee Logic: 10% to Revenue, 90% to Dest
+            BigDecimal feeAmount = command.amount().multiply(new java.math.BigDecimal("0.10"));
+            BigDecimal destAmount = command.amount().subtract(feeAmount);
+
+            PostingCommand debitDest = new PostingCommand(
+                    command.toAccountId(),
+                    destAmount,
+                    command.currency(),
+                    Posting.Type.DEBIT);
+
+            PostingCommand revenueDebit = new PostingCommand(
+                    command.revenueAccountId(),
+                    feeAmount,
+                    command.currency(),
+                    Posting.Type.DEBIT); // Company Wallet (Asset) receives the fee (Debit to Increase)
+
+            postings = java.util.List.of(creditSource, debitDest, revenueDebit);
+        } else {
+            // Standard Transfer
+            PostingCommand debitDest = new PostingCommand(
+                    command.toAccountId(),
+                    command.amount(),
+                    command.currency(),
+                    Posting.Type.DEBIT);
+
+            postings = java.util.List.of(creditSource, debitDest);
+        }
 
         // Delegate to the generic PostTransaction logic
         PostTransactionCommand txCommand = new PostTransactionCommand(
                 command.description() != null ? command.description() : "Transfer",
-                java.util.List.of(creditSource, debitDest));
+                postings);
 
         return postTransaction(txCommand);
     }
