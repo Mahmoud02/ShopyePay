@@ -4,12 +4,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record TransferFundsCommand(UUID fromAccountId, UUID toAccountId, BigDecimal amount, String currency,
-        String description, UUID revenueAccountId) {
-    public TransferFundsCommand(UUID fromAccountId, UUID toAccountId, BigDecimal amount, String currency,
-            String description) {
-        this(fromAccountId, toAccountId, amount, currency, description, null);
-    }
-
+        String description) {
     public TransferFundsCommand {
         if (fromAccountId == null)
             throw new IllegalArgumentException("Source account ID cannot be null");

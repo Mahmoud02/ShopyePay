@@ -23,6 +23,7 @@ public class LedgerController {
     private final PostTransactionUseCase postTransactionUseCase;
     private final RetrieveAccountUseCase retrieveAccountUseCase;
     private final TransferFundsUseCase transferFundsUseCase;
+    private final com.mahmoud.ledger.application.port.in.DepositFundsUseCase depositFundsUseCase;
 
     @PostMapping("/accounts")
     public ResponseEntity<UUID> createAccount(@RequestBody CreateAccountCommand command) {
@@ -48,6 +49,12 @@ public class LedgerController {
     @PostMapping("/transfers")
     public ResponseEntity<UUID> transferFunds(@RequestBody TransferFundsCommand command) {
         return ResponseEntity.ok(transferFundsUseCase.transferFunds(command));
+    }
+
+    @PostMapping("/deposits")
+    public ResponseEntity<UUID> depositFunds(
+            @RequestBody com.mahmoud.ledger.application.port.in.DepositFundsCommand command) {
+        return ResponseEntity.ok(depositFundsUseCase.depositFunds(command));
     }
 
     record AccountResponse(UUID id, String name, String currency, java.math.BigDecimal balance, String status) {

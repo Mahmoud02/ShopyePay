@@ -2,6 +2,8 @@ package com.mahmoud.ledger.application.service;
 
 import com.mahmoud.ledger.application.port.in.CreateAccountCommand;
 import com.mahmoud.ledger.application.port.in.CreateAccountUseCase;
+import com.mahmoud.ledger.application.port.in.DepositFundsCommand;
+import com.mahmoud.ledger.application.port.in.DepositFundsUseCase;
 import com.mahmoud.ledger.application.port.in.PostTransactionCommand;
 import com.mahmoud.ledger.application.port.in.PostingCommand;
 import com.mahmoud.ledger.application.port.in.PostTransactionUseCase;
@@ -24,7 +26,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class LedgerApplicationService
-        implements CreateAccountUseCase, PostTransactionUseCase, RetrieveAccountUseCase, TransferFundsUseCase {
+        implements CreateAccountUseCase, PostTransactionUseCase, RetrieveAccountUseCase, TransferFundsUseCase,
+        DepositFundsUseCase {
 
     private final AccountPort accountPort;
     private final TransactionPort transactionPort;
@@ -86,39 +89,55 @@ public class LedgerApplicationService
 
         java.util.List<PostingCommand> postings;
 
-        if (command.revenueAccountId() != null) {
-            // Fee Logic: 10% to Revenue, 90% to Dest
-            BigDecimal feeAmount = command.amount().multiply(new java.math.BigDecimal("0.10"));
-            BigDecimal destAmount = command.amount().subtract(feeAmount);
+        // Always apply fee and route to Company Revenue System Account
+        UUID revenueAccountId = com.mahmoud.ledger.domain.model.SystemAccounts.REVENUE_ACCOUNT_ID;
 
-            PostingCommand debitDest = new PostingCommand(
-                    command.toAccountId(),
-                    destAmount,
-                    command.currency(),
-                    Posting.Type.DEBIT);
+        // Fee Logic: 10% to Revenue, 90% to Dest
+        BigDecimal feeAmount = command.amount().multiply(new java.math.BigDecimal("0.10"));
+        BigDecimal destAmount = command.amount().subtract(feeAmount);
 
-            PostingCommand revenueDebit = new PostingCommand(
-                    command.revenueAccountId(),
-                    feeAmount,
-                    command.currency(),
-                    Posting.Type.DEBIT); // Company Wallet (Asset) receives the fee (Debit to Increase)
+        PostingCommand debitDest = new PostingCommand(
+                command.toAccountId(),
+                destAmount,
+                command.currency(),
+                Posting.Type.DEBIT);
 
-            postings = java.util.List.of(creditSource, debitDest, revenueDebit);
-        } else {
-            // Standard Transfer
-            PostingCommand debitDest = new PostingCommand(
-                    command.toAccountId(),
-                    command.amount(),
-                    command.currency(),
-                    Posting.Type.DEBIT);
+        PostingCommand revenueDebit = new PostingCommand(
+                revenueAccountId,
+                feeAmount,
+                command.currency(),
+                Posting.Type.DEBIT); // Company Wallet (Asset) receives the fee (Debit to Increase)
 
-            postings = java.util.List.of(creditSource, debitDest);
-        }
+        postings = java.util.List.of(creditSource, debitDest, revenueDebit);
 
         // Delegate to the generic PostTransaction logic
         PostTransactionCommand txCommand = new PostTransactionCommand(
                 command.description() != null ? command.description() : "Transfer",
                 postings);
+
+        return postTransaction(txCommand);
+    }
+
+    @Override
+    @Transactional
+    public UUID depositFunds(DepositFundsCommand command) {
+        UUID genesisId = com.mahmoud.ledger.domain.model.SystemAccounts.GENESIS_ACCOUNT_ID;
+
+        PostingCommand creditGenesis = new PostingCommand(
+                genesisId,
+                command.amount(),
+                command.currency(),
+                Posting.Type.CREDIT); // Genesis (Equity) Increases with Credit (Minting)
+
+        PostingCommand debitTarget = new PostingCommand(
+                command.accountId(),
+                command.amount(),
+                command.currency(),
+                Posting.Type.DEBIT); // User (Asset) Increases with Debit
+
+        PostTransactionCommand txCommand = new PostTransactionCommand(
+                command.description() != null ? command.description() : "Deposit",
+                java.util.List.of(creditGenesis, debitTarget));
 
         return postTransaction(txCommand);
     }

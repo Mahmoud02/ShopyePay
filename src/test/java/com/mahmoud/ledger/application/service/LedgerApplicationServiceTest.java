@@ -61,7 +61,8 @@ class LedgerApplicationServiceTest {
         UUID accountId = UUID.randomUUID();
         CreateAccountCommand command = new CreateAccountCommand("Alice", "USD");
         Account account = Account.create(accountId, "Alice", AccountType.ASSET, "USD");
-        when(accountPort.load(accountId)).thenReturn(Optional.of(account));
+        // when(accountPort.load(accountId)).thenReturn(Optional.of(account)); //
+        // Unnecessary Stubbed
 
         // When
         UUID result = service.createAccount(command);
@@ -113,32 +114,43 @@ class LedgerApplicationServiceTest {
     void testTransferFundsFlow() {
         UUID sourceId = UUID.randomUUID();
         UUID destId = UUID.randomUUID();
+        UUID revenueId = com.mahmoud.ledger.domain.model.SystemAccounts.REVENUE_ACCOUNT_ID;
 
         // 1. Prepare Mocks
         Account source = Account.create(sourceId, "Source", AccountType.ASSET, "USD");
         Account dest = Account.create(destId, "Dest", AccountType.ASSET, "USD");
+        Account revenue = Account.create(revenueId, "Revenue Corp", AccountType.ASSET, "USD");
 
         // Seed Source with 100 USD
         source.postPosting(new Posting(sourceId, Money.of(new BigDecimal("100"), "USD"), Posting.Type.DEBIT));
 
         when(accountPort.loadLocked(sourceId)).thenReturn(Optional.of(source));
         when(accountPort.loadLocked(destId)).thenReturn(Optional.of(dest));
+        when(accountPort.loadLocked(revenueId)).thenReturn(Optional.of(revenue)); // Mock Revenue fetch
 
         // 2. Execute Transfer (50 USD)
-        // Logic: Credit Source (Decrease), Debit Dest (Increase)
+        // Logic:
+        // 1. Credit Source 50.00 (Full Balance decreases)
+        // 2. Debit Dest 45.00 (90%)
+        // 3. Debit Revenue 5.00 (10% Fee)
         TransferFundsCommand command = new TransferFundsCommand(sourceId, destId, new BigDecimal("50"), "USD",
                 "Transfer Test");
         service.transferFunds(command);
 
-        // 3. Verify
-        // Source (started 100) -> Credit 50 -> 50
+        // 3. Verify balance updates
+
+        // Source: 100 - 50 = 50
         assertEquals(new BigDecimal("50"), source.getBalance().amount());
 
-        // Dest (started 0) -> Debit 50 -> +50
-        assertEquals(new BigDecimal("50"), dest.getBalance().amount());
+        // Dest: 0 + 45 = 45
+        assertEquals(new BigDecimal("45.00"), dest.getBalance().amount());
+
+        // Revenue: 0 + 5 = 5
+        assertEquals(new BigDecimal("5.00"), revenue.getBalance().amount());
 
         verify(accountPort).loadLocked(sourceId);
         verify(accountPort).loadLocked(destId);
+        verify(accountPort).loadLocked(revenueId);
         verify(transactionPort).save(any(Transaction.class));
     }
 
